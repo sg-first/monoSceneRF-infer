@@ -8,6 +8,9 @@ from scenerf.models.scenerf_bf import SceneRF
 from scenerf.models.utils import depth2disp
 import gc
 
+torch.cuda.set_per_process_memory_fraction(0.7)
+torch.cuda.empty_cache()
+
 def clear_gpu_memory():
     """手动清理GPU显存"""
     torch.cuda.empty_cache()
@@ -45,7 +48,7 @@ def main():
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
     # 调整图像大小
-    img = img.resize((640, 480))  # 缩小图像尺寸
+    img = img.resize((320, 240))  # 缩小图像尺寸
     img = np.array(img, dtype=np.float32) / 255.0
     img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
     
@@ -53,7 +56,7 @@ def main():
     clear_gpu_memory()
     
     # 设置相机参数
-    cam_K = torch.tensor([[525.0, 0, 320], [0, 525.0, 240], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
+    cam_K = torch.tensor([[262.5, 0, 160], [0, 262.5, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
     inv_K = torch.inverse(cam_K)
     
     # 清理显存
@@ -75,7 +78,7 @@ def main():
     clear_gpu_memory()
     
     # 设置渲染参数
-    img_size = (640, 480)  # 调整图像大小
+    img_size = (320, 240)  # 调整图像大小
     scale = 2  # 减小上采样倍数
     xs = torch.arange(start=0, end=img_size[0], step=scale, dtype=torch.float32).type_as(cam_K)
     ys = torch.arange(start=0, end=img_size[1], step=scale, dtype=torch.float32).type_as(cam_K)
@@ -96,7 +99,7 @@ def main():
             cam_K,
             torch.eye(4, dtype=torch.float32).cuda(),
             x_rgb,
-            ray_batch_size=2000,  # 减小批处理大小
+            ray_batch_size=200,  # 减小批处理大小
             sampled_pixels=sampled_pixels
         )
         
