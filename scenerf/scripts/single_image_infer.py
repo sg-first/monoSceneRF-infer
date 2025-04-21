@@ -45,7 +45,7 @@ def main():
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
     # 调整图像大小
-    img = img.resize((320, 240))  # 缩小图像尺寸
+    img = img.resize((640, 480))  # 缩小图像尺寸
     img = np.array(img, dtype=np.float32) / 255.0
     img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
     
@@ -53,7 +53,7 @@ def main():
     clear_gpu_memory()
     
     # 设置相机参数
-    cam_K = torch.tensor([[525.0, 0, 160], [0, 525.0, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
+    cam_K = torch.tensor([[525.0, 0, 320], [0, 525.0, 240], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
     inv_K = torch.inverse(cam_K)
     
     # 清理显存
@@ -67,13 +67,16 @@ def main():
     
     # 获取RGB特征
     x_rgbs = model.net_rgb(img, pix=pix_coords, pix_sphere=out_pix_coords)
+    x_rgb = {}
+    for k in x_rgbs:
+        x_rgb[k] = x_rgbs[k][0]  # 取第一个batch的结果
     
     # 清理显存
     clear_gpu_memory()
     
     # 设置渲染参数
-    img_size = (320, 240)  # 调整图像大小
-    scale = 1  # 减小上采样倍数
+    img_size = (640, 480)  # 调整图像大小
+    scale = 2  # 减小上采样倍数
     xs = torch.arange(start=0, end=img_size[0], step=scale, dtype=torch.float32).type_as(cam_K)
     ys = torch.arange(start=0, end=img_size[1], step=scale, dtype=torch.float32).type_as(cam_K)
     grid_x, grid_y = torch.meshgrid(xs, ys)
@@ -92,8 +95,8 @@ def main():
         render_out_dict = model.render_rays_batch(
             cam_K,
             torch.eye(4, dtype=torch.float32).cuda(),
-            x_rgbs,
-            ray_batch_size=500,  # 减小批处理大小
+            x_rgb,
+            ray_batch_size=2000,  # 减小批处理大小
             sampled_pixels=sampled_pixels
         )
         
@@ -138,6 +141,18 @@ def main():
         disp_np = disp.detach().cpu().numpy()
         img = Image.fromarray((disp_np * 255.0).astype(np.uint8))
         img.save(os.path.join(save_dir, "depth.png"))
+
+        import matplotlib as mpl
+        import matplotlib.cm as cm
+
+        # 保存深度可视化图
+        vmax = disp_np.max()
+        vmin = disp_np.min()
+        normalizer = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+        mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+        colormapped_im = (mapper.to_rgba(disp_np)[:, :, :3] * 255).astype(np.uint8)
+        im = Image.fromarray(colormapped_im)
+        im.save(os.path.join(save_dir, "depth_visual.png"))
         
         print("Results saved to", save_dir)
 
