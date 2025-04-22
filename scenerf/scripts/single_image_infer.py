@@ -92,7 +92,7 @@ def main():
     
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
-    original_width, original_height = img.size
+    img = img.resize((320, 240))
     # 调整图像大小
     img = np.array(img, dtype=np.float32) / 255.0
     img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
@@ -101,9 +101,9 @@ def main():
     clear_gpu_memory()
     
     # 设置相机参数
-    focal = original_width / 4
-    cx = original_width / 2
-    cy = original_height / 2
+    focal = 320 / 4
+    cx = 320 / 2
+    cy = 240 / 2
     # cam_K = torch.tensor([[262.5, 0, 160], [0, 262.5, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
     cam_K = torch.tensor([[focal, 0, cx], 
                         [0, focal, cy],
@@ -129,7 +129,7 @@ def main():
     clear_gpu_memory()
     
     # 设置渲染参数
-    img_size = (original_width, original_height)  # 调整图像大小
+    img_size = (320, 240)  # 调整图像大小
     scale = 2
     xs = torch.arange(start=0, end=img_size[0], step=scale, dtype=torch.float32).type_as(cam_K)
     ys = torch.arange(start=0, end=img_size[1], step=scale, dtype=torch.float32).type_as(cam_K)
