@@ -81,7 +81,6 @@ def main():
     
     # 清理显存
     clear_gpu_memory()
-    image.png
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
     # 调整图像大小
