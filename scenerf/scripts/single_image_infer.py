@@ -139,31 +139,28 @@ def main():
     
     # 渲染
     with torch.no_grad():
-        # 尝试不同的视角
         # test_angles = [
-        #     (0, math.pi/2),          # 正面平视
-        #     (0, math.pi/3),          # 正面略微俯视 (30度)
-        #     (math.pi/6, math.pi/2),  # 右前方30度平视
-        #     (-math.pi/6, math.pi/2), # 左前方30度平视
-        #     (math.pi/4, math.pi/3),  # 右前方45度俯视
-        #     (-math.pi/4, math.pi/3), # 左前方45度俯视
+        #     (0, math.pi/2),                          # 正面平视（基准）
+        #     (math.radians(5), math.pi/2),            # 向右转5度
+        #     (-math.radians(5), math.pi/2),           # 向左转5度
+        #     (0, math.pi/2 - math.radians(5)),        # 向下看5度
+        #     (0, math.pi/2 + math.radians(5)),        # 向上看5度
+        #     (math.radians(5), math.pi/2 - math.radians(5))  # 右转5度同时向下看5度
         # ]
-        test_angles = [
-            (0, math.pi/2),                          # 正面平视（基准）
-            (math.radians(5), math.pi/2),            # 向右转5度
-            (-math.radians(5), math.pi/2),           # 向左转5度
-            (0, math.pi/2 - math.radians(5)),        # 向下看5度
-            (0, math.pi/2 + math.radians(5)),        # 向上看5度
-            (math.radians(5), math.pi/2 - math.radians(5))  # 右转5度同时向下看5度
+        test_distances = [
+            1.0,    # 原始距离
+            0.8,    # 稍微靠近
+            0.6,    # 更靠近
+            1.2,    # 稍微远离
+            1.4     # 更远离
         ]
-
         # 为测试创建保存目录
-        test_dir = os.path.join(save_dir, "angle_test")
+        test_dir = os.path.join(save_dir, "distance_test")
         os.makedirs(test_dir, exist_ok=True)
 
-        for idx, (theta, phi) in enumerate(test_angles):
-            print(f"\n测试视角 {idx+1}: theta={theta:.2f}, phi={phi:.2f}")
-            transform = create_orbit_transform(theta, phi, radius=1.0)  # 保持radius=1.0不变
+        for idx, distance in enumerate(test_distances):
+            print(f"\n测试视角 {idx+1}: distance={distance:.2f}")
+            transform = create_orbit_transform(theta=0, phi=math.pi/2, radius=distance)
             print(torch.cuda.memory_summary(device=0, abbreviated=True))
             render_out_dict = model.render_rays_batch(
                 cam_K,
@@ -209,13 +206,13 @@ def main():
         
             # 保存结果
             os.makedirs(test_dir, exist_ok=True)
-            plt.imsave(os.path.join(test_dir, f"angle_{idx:02d}_rgb.png"), color_rendered_np)
+            plt.imsave(os.path.join(test_dir, f"distance_{idx:02d}_rgb.png"), color_rendered_np)
         
             # 保存深度图
             disp = depth2disp(depth_rendered, min_depth=0.1, max_depth=12.0).squeeze()
             disp_np = disp.detach().cpu().numpy()
             img = Image.fromarray((disp_np * 255.0).astype(np.uint8))
-            img.save(os.path.join(test_dir, f"angle_{idx:02d}_depth.png"))
+            img.save(os.path.join(test_dir, f"distance_{idx:02d}_depth.png"))
 
             # 保存深度可视化图
             vmax = disp_np.max()
@@ -224,7 +221,7 @@ def main():
             mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
             colormapped_im = (mapper.to_rgba(disp_np)[:, :, :3] * 255).astype(np.uint8)
             im = Image.fromarray(colormapped_im)
-            im.save(os.path.join(test_dir, f"angle_{idx:02d}_depth_visual.png"))
+            im.save(os.path.join(test_dir, f"distance_{idx:02d}_depth_visual.png"))
         
             print("Results saved to", save_dir)
 
