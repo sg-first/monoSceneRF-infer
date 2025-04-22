@@ -17,50 +17,37 @@ torch.cuda.empty_cache()
 def create_orbit_transform(theta, phi, radius):
     """
     以正面视角为基准的小角度旋转
-    theta: 水平旋转角度（0是正面，正值向右转，负值向左转）
-    phi: 垂直角度（pi/2是平视，大于pi/2向上看，小于pi/2向下看）
-    radius: 相机到原点的距离
     """
-    # 正面视角直接返回单位矩阵
+    # 正面视角
     if abs(theta) < 1e-6 and abs(phi - math.pi/2) < 1e-6:
         return torch.eye(4, dtype=torch.float32).cuda()
     
-    # 计算相机位置
-    # 使用更直观的方式计算位置：从z轴正方向开始，先垂直旋转，再水平旋转
-    phi_offset = phi - math.pi/2  # 相对于平视的角度偏移
-    
-    # 基础位置在z轴正方向
-    x = radius * math.sin(theta)
-    y = -radius * math.sin(phi_offset)  # 负号使得角度增加时相机向上看
-    z = radius * math.cos(theta) * math.cos(phi_offset)
-    
-    position = torch.tensor([x, y, z], dtype=torch.float32).cuda()
-    
-    # 创建变换矩阵
+    # 构建旋转矩阵
     transform = torch.eye(4, dtype=torch.float32).cuda()
-    transform[0:3, 3] = position  # 设置相机位置
     
-    # 计算相机朝向（看向原点）
-    forward = -position / torch.norm(position)
+    # 先绕y轴旋转theta角度（水平旋转）
+    cos_theta = math.cos(theta)
+    sin_theta = math.sin(theta)
+    transform[0, 0] = cos_theta
+    transform[0, 2] = sin_theta
+    transform[2, 0] = -sin_theta
+    transform[2, 2] = cos_theta
     
-    # 计算相机的右方向和上方向
-    up = torch.tensor([0., 1., 0.], device='cuda')  # 默认上方向是y轴
-    right = torch.cross(up, forward)
-    right = right / torch.norm(right)
-    up = torch.cross(forward, right)
-    up = up / torch.norm(up)
+    # 再绕x轴旋转(phi-pi/2)角度（垂直旋转）
+    phi_offset = phi - math.pi/2
+    cos_phi = math.cos(phi_offset)
+    sin_phi = math.sin(phi_offset)
+    temp = transform.clone()
+    transform[1, 1] = cos_phi
+    transform[1, 2] = -sin_phi
+    transform[2, 1] = sin_phi
+    transform[2, 2] = cos_phi * temp[2, 2]
+    transform[2, 0] = cos_phi * temp[2, 0]
     
-    # 设置旋转部分
-    transform[0:3, 0] = right
-    transform[0:3, 1] = up
-    transform[0:3, 2] = forward
+    # 设置相机位置（在z=radius平面上）
+    transform[0:3, 3] = transform[0:3, 2] * radius
     
-    # 打印调试信息
     print(f"\n角度: theta={math.degrees(theta):.1f}度, phi={math.degrees(phi):.1f}度")
-    print("Position:", position)
-    print("Forward:", forward)
-    print("Right:", right)
-    print("Up:", up)
     print("Transform:")
     print(transform)
     
