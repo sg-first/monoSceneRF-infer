@@ -100,14 +100,7 @@ def main():
     # 清理显存
     clear_gpu_memory()
     
-    # 设置相机参数
-    focal = 320 / 4
-    cx = 320 / 2
-    cy = 240 / 2
-    # cam_K = torch.tensor([[262.5, 0, 160], [0, 262.5, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
-    cam_K = torch.tensor([[focal, 0, cx], 
-                        [0, focal, cy],
-                        [0, 0, 1]], dtype=torch.float32).cuda()
+    cam_K = torch.tensor([[262.5, 0, 160], [0, 262.5, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
     inv_K = torch.inverse(cam_K)
     
     # 清理显存
