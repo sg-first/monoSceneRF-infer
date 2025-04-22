@@ -130,7 +130,7 @@ def main():
     
     # 设置渲染参数
     img_size = (320, 240)  # 调整图像大小
-    scale = 2
+    scale = 1
     xs = torch.arange(start=0, end=img_size[0], step=scale, dtype=torch.float32).type_as(cam_K)
     ys = torch.arange(start=0, end=img_size[1], step=scale, dtype=torch.float32).type_as(cam_K)
     grid_x, grid_y = torch.meshgrid(xs, ys)
