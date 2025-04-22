@@ -16,12 +16,6 @@ torch.cuda.empty_cache()
 
 # 添加创建变换矩阵的函数
 def create_orbit_transform(theta, phi, radius):
-    """
-    创建环绕视角的变换矩阵
-    theta: 水平旋转角度（弧度）
-    phi: 垂直旋转角度（弧度）
-    radius: 到中心点的距离
-    """
     transform = torch.eye(4, dtype=torch.float32).cuda()
     
     # 计算相机位置
@@ -131,15 +125,14 @@ def main():
     
     # 渲染
     with torch.no_grad():
-        n_frames = 5
-        radius = 1
-        phi = math.pi / 4
+        test_radii = [0.5, 1.0, 2.0, 4.0, 8.0]
+        phi = math.pi / 3
+        theta = 0
         # 为每一帧创建保存目录
-        frames_dir = os.path.join(save_dir, "frames")
-        os.makedirs(frames_dir, exist_ok=True)
+        test_dir = os.path.join(save_dir, "radius_test")
+        os.makedirs(test_dir, exist_ok=True)
 
-        for i in range(n_frames):
-            theta = 2 * math.pi * i / n_frames
+        for idx, radius in enumerate(test_radii):
             transform = create_orbit_transform(theta, phi, radius)
 
             render_out_dict = model.render_rays_batch(
@@ -180,8 +173,8 @@ def main():
             color_rendered_np = np.transpose(color_rendered_np, (1, 2, 0))
 
             # 保存当前帧的RGB图像
-            frame_rgb_path = os.path.join(frames_dir, f"frame_{i:03d}_rgb.png")
-            plt.imsave(frame_rgb_path, color_rendered_np)
+            rgb_path = os.path.join(test_dir, f"frame_{radius:.1f}_rgb.png")
+            plt.imsave(rgb_path, color_rendered_np)
 
             # 保存当前帧的深度图
             disp = depth2disp(depth_rendered, min_depth=0.1, max_depth=12.0).squeeze()
@@ -194,10 +187,10 @@ def main():
             mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
             colormapped_im = (mapper.to_rgba(disp_np)[:, :, :3] * 255).astype(np.uint8)
             im = Image.fromarray(colormapped_im)
-            frame_depth_path = os.path.join(frames_dir, f"frame_{i:03d}_depth.png")
-            im.save(frame_depth_path)
+            depth_path = os.path.join(test_dir, f"frame_{radius:.1f}_depth.png")
+            im.save(depth_path)
             
-            print(f"Frame {i}/{n_frames} saved")
+            print(f"{radius:.1f}/{len(test_radii)} saved")
             
             # 清理显存
             clear_gpu_memory()
