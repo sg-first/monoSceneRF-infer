@@ -90,7 +90,7 @@ def main():
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
     # 调整图像大小
-    img = img.resize((320, 240))  # 缩小图像尺寸
+    img = img.resize((640, 480))  # 缩小图像尺寸
     img = np.array(img, dtype=np.float32) / 255.0
     img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
     
@@ -120,8 +120,8 @@ def main():
     clear_gpu_memory()
     
     # 设置渲染参数
-    img_size = (320, 240)  # 调整图像大小
-    scale = 2  # 减小上采样倍数
+    img_size = (640, 480)  # 调整图像大小
+    scale = 10
     xs = torch.arange(start=0, end=img_size[0], step=scale, dtype=torch.float32).type_as(cam_K)
     ys = torch.arange(start=0, end=img_size[1], step=scale, dtype=torch.float32).type_as(cam_K)
     grid_x, grid_y = torch.meshgrid(xs, ys)
@@ -167,7 +167,7 @@ def main():
                 cam_K,
                 transform,
                 x_rgb,
-                ray_batch_size=200,  # 减小批处理大小
+                ray_batch_size=2000,  # 减小批处理大小
                 sampled_pixels=sampled_pixels
             )
         
