@@ -11,6 +11,8 @@ import math
 import inspect
 import matplotlib as mpl
 import matplotlib.cm as cm
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:64"
 
 torch.cuda.set_per_process_memory_fraction(0.5)
 torch.cuda.empty_cache()
@@ -169,7 +171,7 @@ def main():
         for idx, (theta, phi) in enumerate(test_angles):
             print(f"\n测试视角 {idx+1}: theta={theta:.2f}, phi={phi:.2f}")
             transform = create_orbit_transform(theta, phi, radius=1.0)  # 保持radius=1.0不变
-
+            print(torch.cuda.memory_summary(device=0, abbreviated=True))
             render_out_dict = model.render_rays_batch(
                 cam_K,
                 transform,
