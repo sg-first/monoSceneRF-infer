@@ -12,7 +12,7 @@ import inspect
 import matplotlib as mpl
 import matplotlib.cm as cm
 
-torch.cuda.set_per_process_memory_fraction(0.7)
+torch.cuda.set_per_process_memory_fraction(0.5)
 torch.cuda.empty_cache()
 
 def create_orbit_transform(theta, phi, radius):
@@ -174,7 +174,7 @@ def main():
                 cam_K,
                 transform,
                 x_rgb,
-                ray_batch_size=200,
+                ray_batch_size=100,
                 sampled_pixels=sampled_pixels
             )
             print(inspect.signature(model.render_rays_batch))
