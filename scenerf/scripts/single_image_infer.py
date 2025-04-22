@@ -15,41 +15,39 @@ torch.cuda.set_per_process_memory_fraction(0.7)
 torch.cuda.empty_cache()
 
 def create_orbit_transform(theta, phi, radius):
-    """
-    theta: 水平旋转角度（0是正面）
-    phi: 垂直角度（pi/2是平视）
-    radius: 到原点的距离
-    """
-    # 对于正面视角，返回单位矩阵
-    if abs(phi - math.pi/2) < 1e-6 and abs(theta) < 1e-6:
-        return torch.eye(4, dtype=torch.float32).cuda()
-    
-    # 计算相机位置
-    x = radius * math.sin(phi) * math.sin(theta)  # 修改：使用sin(theta)
+    x = radius * math.sin(phi) * math.sin(theta)
     y = radius * math.cos(phi)
-    z = radius * math.sin(phi) * math.cos(theta)  # 修改：使用cos(theta)
+    z = radius * math.sin(phi) * math.cos(theta)
+    position = torch.tensor([x, y, z], dtype=torch.float32).cuda()
     
-    # 创建相机到世界的变换矩阵
     transform = torch.eye(4, dtype=torch.float32).cuda()
-    
-    # 相机位置
-    transform[0:3, 3] = torch.tensor([x, y, z])
-    
-    # 计算相机朝向
-    forward = torch.tensor([-x, -y, -z])  # 相机应该朝向原点
-    forward = forward / torch.norm(forward)
-    
-    right = torch.cross(torch.tensor([0., 1., 0.]), forward)
+    transform[0:3, 3] = position
+
+    forward = -position / torch.norm(position)
+
+    # 动态选择“参考向上向量”来避免 cross 出 bug
+    up_guess = torch.tensor([0., 1., 0.], device='cuda')
+    if torch.abs(torch.dot(forward, up_guess)) > 0.95:  # 趋近垂直
+        up_guess = torch.tensor([0., 0., 1.], device='cuda')  # 改用z轴当up方向
+
+    right = torch.cross(up_guess, forward)
     right = right / torch.norm(right)
-    
+
     up = torch.cross(forward, right)
-    
-    # 设置旋转矩阵
+    up = up / torch.norm(up)
+
     transform[0:3, 0] = right
     transform[0:3, 1] = up
     transform[0:3, 2] = forward
     
+    print("Position:", position)
+    print("Forward:", forward)
+    print("Right:", right)
+    print("Up:", up)
+    print(transform)
+
     return transform
+
 
 def clear_gpu_memory():
     """手动清理GPU显存"""
@@ -221,7 +219,7 @@ def main():
             print("Results saved to", save_dir)
 
 if __name__ == "__main__":
-    # main() 
+    main() 
     # 在渲染之前添加这段代码来对比两个transform
     # original_transform = torch.eye(4, dtype=torch.float32).cuda()
     
@@ -231,13 +229,13 @@ if __name__ == "__main__":
     # print(original_transform)
     # print("\nOur transform:")
     # print(our_transform)
-    test_angles = [
-        (0, math.pi/2),                          # 正面平视
-        (math.radians(10), math.pi/2),           # 水平偏移10度
-        (0, math.pi/2 - math.radians(10))        # 俯视10度
-    ]
-    for theta, phi in test_angles:
-        transform = create_orbit_transform(theta=theta, phi=phi, radius=1.0)
-        print(f"\n角度: theta={theta:.3f} ({theta*180/math.pi:.1f}度), "
-              f"phi={phi:.3f} ({phi*180/math.pi:.1f}度)")
-        print(transform)
+    # test_angles = [
+    #     (0, math.pi/2),                          # 正面平视
+    #     (math.radians(10), math.pi/2),           # 水平偏移10度
+    #     (0, math.pi/2 - math.radians(10))        # 俯视10度
+    # ]
+    # for theta, phi in test_angles:
+    #     transform = create_orbit_transform(theta=theta, phi=phi, radius=1.0)
+    #     print(f"\n角度: theta={theta:.3f} ({theta*180/math.pi:.1f}度), "
+    #           f"phi={phi:.3f} ({phi*180/math.pi:.1f}度)")
+    #     print(transform)
