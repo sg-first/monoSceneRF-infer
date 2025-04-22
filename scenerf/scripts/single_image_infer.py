@@ -215,12 +215,12 @@ def main():
             print("Results saved to", save_dir)
 
 if __name__ == "__main__":
-    # main() 
+    main() 
     # 在渲染之前添加这段代码来对比两个transform
-    original_transform = torch.eye(4, dtype=torch.float32).cuda()
-    our_transform = create_orbit_transform(theta=0, phi=math.pi/2, radius=1.0)
+    # original_transform = torch.eye(4, dtype=torch.float32).cuda()
+    # our_transform = create_orbit_transform(theta=0, phi=math.pi/2, radius=1.0)
 
-    print("Original transform:")
-    print(original_transform)
-    print("\nOur transform:")
-    print(our_transform)
+    # print("Original transform:")
+    # print(original_transform)
+    # print("\nOur transform:")
+    # print(our_transform)
