@@ -14,24 +14,32 @@ import matplotlib.cm as cm
 torch.cuda.set_per_process_memory_fraction(0.7)
 torch.cuda.empty_cache()
 
-# 在渲染部分添加创建transform的函数并修改渲染部分
 def create_orbit_transform(theta, phi, radius):
+    """
+    theta: 水平旋转角度（0是正面）
+    phi: 垂直角度（pi/2是平视）
+    radius: 到原点的距离
+    """
+    # 对于正面视角(theta=0, phi=pi/2)，直接返回单位矩阵
+    if abs(phi - math.pi/2) < 1e-6 and abs(theta) < 1e-6:
+        return torch.eye(4, dtype=torch.float32).cuda()
+    
     transform = torch.eye(4, dtype=torch.float32).cuda()
     
     # 计算相机位置
     x = radius * math.sin(phi) * math.cos(theta)
     y = radius * math.cos(phi)
-    z = radius * math.sin(phi) * math.sin(theta)
+    z = -radius * math.sin(phi) * math.sin(theta)  # 注意这里加了负号
     
     transform[0, 3] = x
     transform[1, 3] = y
     transform[2, 3] = z
     
-    # 计算相机朝向（看向原点）
+    # 计算相机朝向
     cam_pos = torch.tensor([x, y, z], dtype=torch.float32)
     up = torch.tensor([0., 1., 0.], dtype=torch.float32)
     
-    z_axis = -cam_pos / torch.norm(cam_pos)
+    z_axis = cam_pos / torch.norm(cam_pos)  # 移除了负号
     x_axis = torch.cross(up, z_axis)
     x_axis = x_axis / torch.norm(x_axis)
     y_axis = torch.cross(z_axis, x_axis)
