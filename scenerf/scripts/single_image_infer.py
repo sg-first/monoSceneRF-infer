@@ -7,9 +7,46 @@ import torch.nn.functional as F
 from scenerf.models.scenerf_bf import SceneRF
 from scenerf.models.utils import depth2disp
 import gc
+import math
+import matplotlib as mpl
+import matplotlib.cm as cm
 
 torch.cuda.set_per_process_memory_fraction(0.7)
 torch.cuda.empty_cache()
+
+# 添加创建变换矩阵的函数
+def create_orbit_transform(theta, phi, radius):
+    """
+    创建环绕视角的变换矩阵
+    theta: 水平旋转角度（弧度）
+    phi: 垂直旋转角度（弧度）
+    radius: 到中心点的距离
+    """
+    transform = torch.eye(4, dtype=torch.float32).cuda()
+    
+    # 计算相机位置
+    x = radius * math.sin(phi) * math.cos(theta)
+    y = radius * math.cos(phi)
+    z = radius * math.sin(phi) * math.sin(theta)
+    
+    transform[0, 3] = x
+    transform[1, 3] = y
+    transform[2, 3] = z
+    
+    # 计算相机朝向（看向原点）
+    cam_pos = torch.tensor([x, y, z], dtype=torch.float32)
+    up = torch.tensor([0., 1., 0.], dtype=torch.float32)
+    
+    z_axis = -cam_pos / torch.norm(cam_pos)
+    x_axis = torch.cross(up, z_axis)
+    x_axis = x_axis / torch.norm(x_axis)
+    y_axis = torch.cross(z_axis, x_axis)
+    
+    transform[0, 0:3] = x_axis
+    transform[1, 0:3] = y_axis
+    transform[2, 0:3] = z_axis
+    
+    return transform
 
 def clear_gpu_memory():
     """手动清理GPU显存"""
@@ -44,7 +81,7 @@ def main():
     
     # 清理显存
     clear_gpu_memory()
-    
+    image.png
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
     # 调整图像大小
@@ -95,69 +132,76 @@ def main():
     
     # 渲染
     with torch.no_grad():
-        render_out_dict = model.render_rays_batch(
-            cam_K,
-            torch.eye(4, dtype=torch.float32).cuda(),
-            x_rgb,
-            ray_batch_size=200,  # 减小批处理大小
-            sampled_pixels=sampled_pixels
-        )
-        
-        # 清理显存
-        clear_gpu_memory()
-        
-        # 获取深度和颜色
-        depth_rendered = render_out_dict['depth'].reshape(rendered_im_size[0], rendered_im_size[1])
-        color_rendered = render_out_dict['color'].reshape(rendered_im_size[0], rendered_im_size[1], 3)
-        
-        # 清理显存
-        clear_gpu_memory()
-        
-        # 上采样
-        depth_rendered = F.interpolate(
-            depth_rendered.T.unsqueeze(0).unsqueeze(0),
-            scale_factor=scale,
-            mode="bilinear"
-        )
-        color_rendered = F.interpolate(
-            color_rendered.permute(2, 1, 0).unsqueeze(0),
-            scale_factor=scale,
-            mode="bilinear"
-        )
-        
-        # 清理显存
-        clear_gpu_memory()
-        
-        # 转换为numpy
-        color_rendered_np = color_rendered.clamp(0, 1).detach().cpu().numpy().squeeze()
-        color_rendered_np = np.transpose(color_rendered_np, (1, 2, 0))
-        
-        # 清理显存
-        clear_gpu_memory()
-        
-        # 保存结果
-        os.makedirs(save_dir, exist_ok=True)
-        plt.imsave(os.path.join(save_dir, "render_rgb.png"), color_rendered_np)
-        
-        # 保存深度图
-        disp = depth2disp(depth_rendered, min_depth=0.1, max_depth=12.0).squeeze()
-        disp_np = disp.detach().cpu().numpy()
-        img = Image.fromarray((disp_np * 255.0).astype(np.uint8))
-        img.save(os.path.join(save_dir, "depth.png"))
+        n_frames = 5
+        radius = 1
+        phi = math.pi / 4
+        # 为每一帧创建保存目录
+        frames_dir = os.path.join(save_dir, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
 
-        import matplotlib as mpl
-        import matplotlib.cm as cm
+        for i in range(n_frames):
+            theta = 2 * math.pi * i / n_frames
+            transform = create_orbit_transform(theta, phi, radius)
 
-        # 保存深度可视化图
-        vmax = disp_np.max()
-        vmin = disp_np.min()
-        normalizer = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-        mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
-        colormapped_im = (mapper.to_rgba(disp_np)[:, :, :3] * 255).astype(np.uint8)
-        im = Image.fromarray(colormapped_im)
-        im.save(os.path.join(save_dir, "depth_visual.png"))
+            render_out_dict = model.render_rays_batch(
+                cam_K,
+                transform,
+                x_rgb,
+                ray_batch_size=200,  # 减小批处理大小
+                sampled_pixels=sampled_pixels
+            )
         
-        print("Results saved to", save_dir)
+            # 清理显存
+            clear_gpu_memory()
+        
+            # 获取深度和颜色
+            depth_rendered = render_out_dict['depth'].reshape(rendered_im_size[0], rendered_im_size[1])
+            color_rendered = render_out_dict['color'].reshape(rendered_im_size[0], rendered_im_size[1], 3)
+        
+            # 清理显存
+            clear_gpu_memory()
+        
+            # 上采样
+            depth_rendered = F.interpolate(
+                depth_rendered.T.unsqueeze(0).unsqueeze(0),
+                scale_factor=scale,
+                mode="bilinear"
+            )
+            color_rendered = F.interpolate(
+                color_rendered.permute(2, 1, 0).unsqueeze(0),
+                scale_factor=scale,
+                mode="bilinear"
+            )
+        
+            # 清理显存
+            clear_gpu_memory()
+        
+            # 转换为numpy
+            color_rendered_np = color_rendered.clamp(0, 1).detach().cpu().numpy().squeeze()
+            color_rendered_np = np.transpose(color_rendered_np, (1, 2, 0))
+
+            # 保存当前帧的RGB图像
+            frame_rgb_path = os.path.join(frames_dir, f"frame_{i:03d}_rgb.png")
+            plt.imsave(frame_rgb_path, color_rendered_np)
+
+            # 保存当前帧的深度图
+            disp = depth2disp(depth_rendered, min_depth=0.1, max_depth=12.0).squeeze()
+            disp_np = disp.detach().cpu().numpy()
+        
+            # 保存深度可视化图
+            vmax = disp_np.max()
+            vmin = disp_np.min()
+            normalizer = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+            colormapped_im = (mapper.to_rgba(disp_np)[:, :, :3] * 255).astype(np.uint8)
+            im = Image.fromarray(colormapped_im)
+            frame_depth_path = os.path.join(frames_dir, f"frame_{i:03d}_depth.png")
+            im.save(frame_depth_path)
+            
+            print(f"Frame {i}/{n_frames} saved")
+            
+            # 清理显存
+            clear_gpu_memory()
 
 if __name__ == "__main__":
     main() 
