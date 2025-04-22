@@ -15,39 +15,56 @@ torch.cuda.set_per_process_memory_fraction(0.7)
 torch.cuda.empty_cache()
 
 def create_orbit_transform(theta, phi, radius):
-    x = radius * math.sin(phi) * math.sin(theta)
-    y = radius * math.cos(phi)
-    z = radius * math.sin(phi) * math.cos(theta)
+    """
+    以正面视角为基准的小角度旋转
+    theta: 水平旋转角度（0是正面，正值向右转，负值向左转）
+    phi: 垂直角度（pi/2是平视，大于pi/2向上看，小于pi/2向下看）
+    radius: 相机到原点的距离
+    """
+    # 正面视角直接返回单位矩阵
+    if abs(theta) < 1e-6 and abs(phi - math.pi/2) < 1e-6:
+        return torch.eye(4, dtype=torch.float32).cuda()
+    
+    # 计算相机位置
+    # 使用更直观的方式计算位置：从z轴正方向开始，先垂直旋转，再水平旋转
+    phi_offset = phi - math.pi/2  # 相对于平视的角度偏移
+    
+    # 基础位置在z轴正方向
+    x = radius * math.sin(theta)
+    y = -radius * math.sin(phi_offset)  # 负号使得角度增加时相机向上看
+    z = radius * math.cos(theta) * math.cos(phi_offset)
+    
     position = torch.tensor([x, y, z], dtype=torch.float32).cuda()
     
+    # 创建变换矩阵
     transform = torch.eye(4, dtype=torch.float32).cuda()
-    transform[0:3, 3] = position
-
+    transform[0:3, 3] = position  # 设置相机位置
+    
+    # 计算相机朝向（看向原点）
     forward = -position / torch.norm(position)
-
-    # 动态选择“参考向上向量”来避免 cross 出 bug
-    up_guess = torch.tensor([0., 1., 0.], device='cuda')
-    if torch.abs(torch.dot(forward, up_guess)) > 0.95:  # 趋近垂直
-        up_guess = torch.tensor([0., 0., 1.], device='cuda')  # 改用z轴当up方向
-
-    right = torch.cross(up_guess, forward)
+    
+    # 计算相机的右方向和上方向
+    up = torch.tensor([0., 1., 0.], device='cuda')  # 默认上方向是y轴
+    right = torch.cross(up, forward)
     right = right / torch.norm(right)
-
     up = torch.cross(forward, right)
     up = up / torch.norm(up)
-
+    
+    # 设置旋转部分
     transform[0:3, 0] = right
     transform[0:3, 1] = up
     transform[0:3, 2] = forward
     
+    # 打印调试信息
+    print(f"\n角度: theta={math.degrees(theta):.1f}度, phi={math.degrees(phi):.1f}度")
     print("Position:", position)
     print("Forward:", forward)
     print("Right:", right)
     print("Up:", up)
+    print("Transform:")
     print(transform)
-
+    
     return transform
-
 
 def clear_gpu_memory():
     """手动清理GPU显存"""
@@ -143,9 +160,12 @@ def main():
         #     (-math.pi/4, math.pi/3), # 左前方45度俯视
         # ]
         test_angles = [
-            (0, math.pi/2),                          # 正面平视
-            (math.radians(10), math.pi/2),           # 水平偏移10度
-            (0, math.pi/2 - math.radians(10))        # 俯视10度
+            (0, math.pi/2),                          # 正面平视（基准）
+            (math.radians(5), math.pi/2),            # 向右转5度
+            (-math.radians(5), math.pi/2),           # 向左转5度
+            (0, math.pi/2 - math.radians(5)),        # 向下看5度
+            (0, math.pi/2 + math.radians(5)),        # 向上看5度
+            (math.radians(5), math.pi/2 - math.radians(5))  # 右转5度同时向下看5度
         ]
 
         # 为测试创建保存目录
