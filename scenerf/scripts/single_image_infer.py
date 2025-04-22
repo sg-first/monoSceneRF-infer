@@ -136,13 +136,18 @@ def main():
     # 渲染
     with torch.no_grad():
         # 尝试不同的视角
+        # test_angles = [
+        #     (0, math.pi/2),          # 正面平视
+        #     (0, math.pi/3),          # 正面略微俯视 (30度)
+        #     (math.pi/6, math.pi/2),  # 右前方30度平视
+        #     (-math.pi/6, math.pi/2), # 左前方30度平视
+        #     (math.pi/4, math.pi/3),  # 右前方45度俯视
+        #     (-math.pi/4, math.pi/3), # 左前方45度俯视
+        # ]
         test_angles = [
-            (0, math.pi/2),          # 正面平视
-            (0, math.pi/3),          # 正面略微俯视 (30度)
-            (math.pi/6, math.pi/2),  # 右前方30度平视
-            (-math.pi/6, math.pi/2), # 左前方30度平视
-            (math.pi/4, math.pi/3),  # 右前方45度俯视
-            (-math.pi/4, math.pi/3), # 左前方45度俯视
+            (0, math.pi/2),                          # 正面平视
+            (math.radians(10), math.pi/2),           # 水平偏移10度
+            (0, math.pi/2 - math.radians(10))        # 俯视10度
         ]
 
         # 为测试创建保存目录
