@@ -216,7 +216,7 @@ def main():
             print("Results saved to", save_dir)
 
 if __name__ == "__main__":
-    # main() 
+    main() 
     # 在渲染之前添加这段代码来对比两个transform
     # original_transform = torch.eye(4, dtype=torch.float32).cuda()
     
@@ -226,16 +226,16 @@ if __name__ == "__main__":
     # print(original_transform)
     # print("\nOur transform:")
     # print(our_transform)
-    test_angles = [
-        (0, math.pi/2),          # 正面平视
-        (0, math.pi/3),          # 正面略微俯视 (30度)
-        (math.pi/6, math.pi/2),  # 右前方30度平视
-        (-math.pi/6, math.pi/2), # 左前方30度平视
-        (math.pi/4, math.pi/3),  # 右前方45度俯视
-        (-math.pi/4, math.pi/3), # 左前方45度俯视
-    ]
-    for theta, phi in test_angles:
-        transform = create_orbit_transform(theta=theta, phi=phi, radius=1.0)
-        print(f"\n角度: theta={theta:.3f} ({theta*180/math.pi:.1f}度), "
-              f"phi={phi:.3f} ({phi*180/math.pi:.1f}度)")
-        print(transform)
+    # test_angles = [
+    #     (0, math.pi/2),          # 正面平视
+    #     (0, math.pi/3),          # 正面略微俯视 (30度)
+    #     (math.pi/6, math.pi/2),  # 右前方30度平视
+    #     (-math.pi/6, math.pi/2), # 左前方30度平视
+    #     (math.pi/4, math.pi/3),  # 右前方45度俯视
+    #     (-math.pi/4, math.pi/3), # 左前方45度俯视
+    # ]
+    # for theta, phi in test_angles:
+    #     transform = create_orbit_transform(theta=theta, phi=phi, radius=1.0)
+    #     print(f"\n角度: theta={theta:.3f} ({theta*180/math.pi:.1f}度), "
+    #           f"phi={phi:.3f} ({phi*180/math.pi:.1f}度)")
+    #     print(transform)
