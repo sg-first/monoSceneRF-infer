@@ -14,7 +14,7 @@ import matplotlib.cm as cm
 torch.cuda.set_per_process_memory_fraction(0.7)
 torch.cuda.empty_cache()
 
-# 添加创建变换矩阵的函数
+# 在渲染部分添加创建transform的函数并修改渲染部分
 def create_orbit_transform(theta, phi, radius):
     transform = torch.eye(4, dtype=torch.float32).cuda()
     
@@ -75,6 +75,7 @@ def main():
     
     # 清理显存
     clear_gpu_memory()
+    
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
     # 调整图像大小
@@ -125,15 +126,22 @@ def main():
     
     # 渲染
     with torch.no_grad():
-        test_radii = [0.5, 1.0, 2.0, 4.0, 8.0]
-        phi = math.pi / 3
-        theta = 0
-        # 为每一帧创建保存目录
-        test_dir = os.path.join(save_dir, "radius_test")
+        # 尝试不同的视角
+        test_angles = [
+            (0, math.pi/2),      # 正面平视
+            (0, math.pi/3),      # 正面略微俯视
+            (math.pi/4, math.pi/3),  # 右前方俯视
+            (-math.pi/4, math.pi/3), # 左前方俯视
+            (math.pi, math.pi/3),    # 背面俯视
+        ]
+
+        # 为测试创建保存目录
+        test_dir = os.path.join(save_dir, "angle_test")
         os.makedirs(test_dir, exist_ok=True)
 
-        for idx, radius in enumerate(test_radii):
-            transform = create_orbit_transform(theta, phi, radius)
+        for idx, (theta, phi) in enumerate(test_angles):
+            print(f"\n测试视角 {idx+1}: theta={theta:.2f}, phi={phi:.2f}")
+            transform = create_orbit_transform(theta, phi, radius=1.0)  # 保持radius=1.0不变
 
             render_out_dict = model.render_rays_batch(
                 cam_K,
@@ -149,7 +157,8 @@ def main():
             # 获取深度和颜色
             depth_rendered = render_out_dict['depth'].reshape(rendered_im_size[0], rendered_im_size[1])
             color_rendered = render_out_dict['color'].reshape(rendered_im_size[0], rendered_im_size[1], 3)
-        
+
+            print(f"深度范围: {depth_rendered.min().item():.2f} - {depth_rendered.max().item():.2f}")
             # 清理显存
             clear_gpu_memory()
         
@@ -167,19 +176,24 @@ def main():
         
             # 清理显存
             clear_gpu_memory()
-        
+            
             # 转换为numpy
             color_rendered_np = color_rendered.clamp(0, 1).detach().cpu().numpy().squeeze()
             color_rendered_np = np.transpose(color_rendered_np, (1, 2, 0))
-
-            # 保存当前帧的RGB图像
-            rgb_path = os.path.join(test_dir, f"frame_{radius:.1f}_rgb.png")
-            plt.imsave(rgb_path, color_rendered_np)
-
-            # 保存当前帧的深度图
+        
+            # 清理显存
+            clear_gpu_memory()
+        
+            # 保存结果
+            os.makedirs(test_dir, exist_ok=True)
+            plt.imsave(os.path.join(test_dir, f"angle_{idx:02d}_rgb.png"), color_rendered_np)
+        
+            # 保存深度图
             disp = depth2disp(depth_rendered, min_depth=0.1, max_depth=12.0).squeeze()
             disp_np = disp.detach().cpu().numpy()
-        
+            img = Image.fromarray((disp_np * 255.0).astype(np.uint8))
+            img.save(os.path.join(test_dir, f"angle_{idx:02d}_depth.png"))
+
             # 保存深度可视化图
             vmax = disp_np.max()
             vmin = disp_np.min()
@@ -187,13 +201,9 @@ def main():
             mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
             colormapped_im = (mapper.to_rgba(disp_np)[:, :, :3] * 255).astype(np.uint8)
             im = Image.fromarray(colormapped_im)
-            depth_path = os.path.join(test_dir, f"frame_{radius:.1f}_depth.png")
-            im.save(depth_path)
-            
-            print(f"{radius:.1f}/{len(test_radii)} saved")
-            
-            # 清理显存
-            clear_gpu_memory()
+            im.save(os.path.join(test_dir, f"angle_{idx:02d}_depth_visual.png"))
+        
+            print("Results saved to", save_dir)
 
 if __name__ == "__main__":
     main() 
