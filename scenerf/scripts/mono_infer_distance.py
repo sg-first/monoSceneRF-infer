@@ -21,12 +21,14 @@ def create_orbit_transform(theta, phi, radius):
     """
     以正面视角为基准的小角度旋转
     """
-    # 正面视角
-    if abs(theta) < 1e-6 and abs(phi - math.pi/2) < 1e-6:
-        return torch.eye(4, dtype=torch.float32).cuda()
-    
     # 构建旋转矩阵
     transform = torch.eye(4, dtype=torch.float32).cuda()
+
+    # 正面视角
+    if abs(theta) < 1e-6 and abs(phi - math.pi/2) < 1e-6:
+        transform[2, 3] = radius
+        print(transform)
+        return transform
     
     # 先绕y轴旋转theta角度（水平旋转）
     cos_theta = math.cos(theta)
@@ -92,7 +94,8 @@ def main():
     
     # 加载图像并确保数据类型为float32
     img = Image.open(img_path)
-    img = img.resize((320, 240))
+    # img = img.resize((320, 240))
+    img = img.resize((448, 336))
     # 调整图像大小
     img = np.array(img, dtype=np.float32) / 255.0
     img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
@@ -100,7 +103,10 @@ def main():
     # 清理显存
     clear_gpu_memory()
     
-    cam_K = torch.tensor([[262.5, 0, 160], [0, 262.5, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
+    # cam_K = torch.tensor([[262.5, 0, 160], [0, 262.5, 120], [0, 0, 1]], dtype=torch.float32).cuda()  # 调整相机内参
+    cam_K = torch.tensor([[367.5, 0, 224],      # 262.5*1.4=367.5, 160*1.4=224
+                         [0, 367.5, 168],        # 262.5*1.4=367.5, 120*1.4=168
+                         [0, 0, 1]], dtype=torch.float32).cuda()
     inv_K = torch.inverse(cam_K)
     
     # 清理显存
@@ -122,7 +128,7 @@ def main():
     clear_gpu_memory()
     
     # 设置渲染参数
-    img_size = (320, 240)  # 调整图像大小
+    img_size = (448, 336)  # 调整图像大小
     scale = 1
     xs = torch.arange(start=0, end=img_size[0], step=scale, dtype=torch.float32).type_as(cam_K)
     ys = torch.arange(start=0, end=img_size[1], step=scale, dtype=torch.float32).type_as(cam_K)
@@ -148,11 +154,27 @@ def main():
         #     (math.radians(5), math.pi/2 - math.radians(5))  # 右转5度同时向下看5度
         # ]
         test_distances = [
-            1.0,    # 原始距离
-            0.8,    # 稍微靠近
-            0.6,    # 更靠近
-            1.2,    # 稍微远离
-            1.4     # 更远离
+            -1.0,
+            -0.9,
+            -0.8,
+            -0.7,
+            -0.6,
+            -0.5,
+            -0.4,
+            -0.3,
+            -0.2,
+            -0.1,
+            0,
+            0.1,
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.7,
+            0.8,
+            0.9,
+            1.0
         ]
         # 为测试创建保存目录
         test_dir = os.path.join(save_dir, "distance_test")
