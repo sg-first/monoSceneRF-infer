@@ -1,9 +1,7 @@
-<div align='center'>
-
 # MonoSceneRF: A Pipeline for NeRF Reconstruction from a Single Image
 
 [Qianqian Xiong](https://www.researchgate.net/profile/Qianqian-Xiong-5)&nbsp;&nbsp;&nbsp;
-[Tingzhen Liu](https://github.com/)&nbsp;&nbsp;&nbsp;
+[Tingzhen Liu](https://github.com/sg-first)&nbsp;&nbsp;&nbsp;
 [Anh-Quan Cao](https://anhquancao.github.io)&nbsp;&nbsp;&nbsp;
 [Raoul de Charette](https://team.inria.fr/rits/membres/raoul-de-charette/)  
 Canberra, Australia / Paris, France
