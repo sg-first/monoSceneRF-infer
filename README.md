@@ -67,12 +67,8 @@ $ pip install -e ./
 ## Download Pretrained model on Bundlefusion
 Please download the [pretrained model](https://www.rocq.inria.fr/rits_files/computer-vision/scenerf/scenerf_bundlefusion.ckpt).
 
-## Infere RGB Image and Depth Info
-
-Inside the `./scenerf/scripts/` directory, two single-image inference scripts are provided to render scenes from different viewpoints:
-
-- `mono_infer_angles.py`: Renders the scene from six different angles, including front view, ±5° horizontally, ±5° vertically, and a combined 5° right + 5° down;
-- `mono_infer_distance.py`: Moves the camera forward and backward along the viewing direction by sampling 21 evenly spaced positions from `r = -1.0` to `1.0`.
+## Render RGB Image and Depth Info
+`mono_infer_distance.py`: Moves the camera forward and backward along the viewing direction by sampling 21 evenly spaced positions from `r = -1.0` to `1.0`.
 
 To run the scripts, simply modify the following path parameters:
 
